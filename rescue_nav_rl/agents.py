@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 import numpy as np
 
@@ -50,6 +50,7 @@ def train_q_learning(
     epsilon: float = 0.1,
     gamma: float = 0.95,
     seed: Optional[int] = None,
+    env_factory: Callable[..., GridworldEnv] = GridworldEnv,
 ) -> Dict[str, np.ndarray]:
     """
     Tabular Q-learning.
@@ -58,7 +59,7 @@ def train_q_learning(
         Q(s,a) <- Q(s,a) + alpha * [r + gamma * max_a' Q(s',a') - Q(s,a)]
     """
     rng = np.random.default_rng(seed)
-    env = GridworldEnv(seed=seed)
+    env = env_factory(seed=seed)
 
     q = np.zeros((env.num_states, env.num_actions), dtype=float)
     episode_rewards = np.zeros(episodes, dtype=float)
@@ -108,6 +109,7 @@ def train_sarsa(
     epsilon: float = 0.1,
     gamma: float = 0.95,
     seed: Optional[int] = None,
+    env_factory: Callable[..., GridworldEnv] = GridworldEnv,
 ) -> Dict[str, np.ndarray]:
     """
     Tabular SARSA.
@@ -116,7 +118,7 @@ def train_sarsa(
         Q(s,a) <- Q(s,a) + alpha * [r + gamma * Q(s',a') - Q(s,a)]
     """
     rng = np.random.default_rng(seed)
-    env = GridworldEnv(seed=seed)
+    env = env_factory(seed=seed)
 
     q = np.zeros((env.num_states, env.num_actions), dtype=float)
     episode_rewards = np.zeros(episodes, dtype=float)
@@ -170,6 +172,7 @@ def train_sarsa_lambda(
     gamma: float = 0.95,
     lam: float = 0.5,
     seed: Optional[int] = None,
+    env_factory: Callable[..., GridworldEnv] = GridworldEnv,
 ) -> Dict[str, np.ndarray]:
     """
     Tabular SARSA(lambda) with backward view and accumulating eligibility traces.
@@ -185,7 +188,7 @@ def train_sarsa_lambda(
         E <- gamma * lambda * E
     """
     rng = np.random.default_rng(seed)
-    env = GridworldEnv(seed=seed)
+    env = env_factory(seed=seed)
 
     q = np.zeros((env.num_states, env.num_actions), dtype=float)
     episode_rewards = np.zeros(episodes, dtype=float)
@@ -265,6 +268,7 @@ def train_actor_critic(
     alpha_critic: float = 0.1,
     gamma: float = 0.95,
     seed: Optional[int] = None,
+    env_factory: Callable[..., GridworldEnv] = GridworldEnv,
 ) -> Dict[str, np.ndarray]:
     """
     Tabular linear Actor-Critic using one-hot state features.
@@ -288,7 +292,7 @@ def train_actor_critic(
         V[s] <- V[s] + alpha_critic * delta
     """
     rng = np.random.default_rng(seed)
-    env = GridworldEnv(seed=seed)
+    env = env_factory(seed=seed)
 
     actor_preferences = np.zeros((env.num_states, env.num_actions), dtype=float)
     critic_values = np.zeros(env.num_states, dtype=float)

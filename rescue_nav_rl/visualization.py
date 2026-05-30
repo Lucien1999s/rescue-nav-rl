@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,6 +29,7 @@ def simulate_policy(
     policy: np.ndarray,
     seed: int = 0,
     max_steps: int = 100,
+    env_factory: Callable[..., object] = GridworldEnv,
 ) -> Dict:
     """
     Simulate one episode using a deterministic policy.
@@ -36,7 +37,11 @@ def simulate_policy(
     Returns a dictionary containing states, actions, rewards,
     total reward, success flag, and hazard exposure counts.
     """
-    env = GridworldEnv(seed=seed, max_steps=max_steps)
+    try:
+        env = env_factory(seed=seed, max_steps=max_steps)
+    except TypeError:
+        env = env_factory(seed=seed)
+
     state = env.reset(seed=seed)
 
     states = [state]
@@ -111,14 +116,18 @@ def plot_policy_map(
     policy: Optional[np.ndarray] = None,
     trajectory: Optional[List[int]] = None,
     title: str = "Rescue Navigation Policy",
+    env: Optional[object] = None,
+    show_policy: bool = True,
+    compact: bool = False,
 ):
     """
     Plot the hazardous gridworld with optional learned policy arrows
     and optional simulated trajectory path.
     """
-    env = GridworldEnv()
+    env = env if env is not None else GridworldEnv()
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    figure_size = max(5.5, min(9.0, env.width * (0.62 if compact else 0.8)))
+    fig, ax = plt.subplots(figsize=(figure_size, figure_size))
     fig.patch.set_facecolor(COLORS["background"])
     ax.set_facecolor(COLORS["background"])
 
@@ -150,7 +159,7 @@ def plot_policy_map(
                     color=COLORS["text"],
                 )
 
-            if policy is not None and label not in {"G"}:
+            if policy is not None and show_policy and label not in {"G"}:
                 action = int(policy[state])
                 symbol = ACTION_SYMBOLS[action]
 
