@@ -237,6 +237,7 @@ def train_sarsa_lambda(
     }
 
 
+
 def softmax(logits: np.ndarray) -> np.ndarray:
     """
     Numerically stable softmax.
@@ -246,29 +247,14 @@ def softmax(logits: np.ndarray) -> np.ndarray:
     return exp_values / np.sum(exp_values)
 
 
-def sample_softmax_action(
-    actor_weights: np.ndarray,
-    features: np.ndarray,
-    rng: np.random.Generator,
-) -> int:
+def actor_policy(actor_preferences: np.ndarray, env: GridworldEnv) -> np.ndarray:
     """
-    Sample action from softmax actor policy.
-    """
-    logits = actor_weights @ features
-    probs = softmax(logits)
-    return int(rng.choice(len(probs), p=probs))
-
-
-def actor_policy(actor_weights: np.ndarray, env: GridworldEnv) -> np.ndarray:
-    """
-    Extract deterministic greedy policy from the learned softmax actor.
+    Extract deterministic greedy policy from learned actor preferences.
     """
     policy = np.zeros(env.num_states, dtype=int)
 
     for state in range(env.num_states):
-        features = env.state_features(state)
-        logits = actor_weights @ features
-        policy[state] = int(np.argmax(logits))
+        policy[state] = int(np.argmax(actor_preferences[state]))
 
     return policy
 
@@ -276,35 +262,36 @@ def actor_policy(actor_weights: np.ndarray, env: GridworldEnv) -> np.ndarray:
 def train_actor_critic(
     episodes: int = 100,
     alpha_actor: float = 0.02,
-    alpha_critic: float = 0.05,
+    alpha_critic: float = 0.1,
     gamma: float = 0.95,
     seed: Optional[int] = None,
 ) -> Dict[str, np.ndarray]:
     """
-    Linear Actor-Critic.
+    Tabular linear Actor-Critic using one-hot state features.
+
+    This is equivalent to linear function approximation with one-hot
+    features over the 16 grid states.
 
     Actor:
-        softmax policy over linear preferences
+        softmax policy over state-action preferences H[s, a]
 
     Critic:
-        linear state-value function V(s) = w^T phi(s)
+        tabular state-value estimate V[s]
 
     TD(0) error:
-        delta = r + gamma * V(s') - V(s)
+        delta = r + gamma * V[s'] - V[s]
 
     Actor update:
-        theta <- theta + alpha_actor * delta * grad log pi(a|s)
+        H[s, :] <- H[s, :] + alpha_actor * delta * grad log pi(a|s)
 
     Critic update:
-        w <- w + alpha_critic * delta * phi(s)
+        V[s] <- V[s] + alpha_critic * delta
     """
     rng = np.random.default_rng(seed)
     env = GridworldEnv(seed=seed)
 
-    feature_dim = len(env.state_features(env.reset()))
-
-    actor_weights = np.zeros((env.num_actions, feature_dim), dtype=float)
-    critic_weights = np.zeros(feature_dim, dtype=float)
+    actor_preferences = np.zeros((env.num_states, env.num_actions), dtype=float)
+    critic_values = np.zeros(env.num_states, dtype=float)
 
     episode_rewards = np.zeros(episodes, dtype=float)
     episode_steps = np.zeros(episodes, dtype=int)
@@ -315,9 +302,7 @@ def train_actor_critic(
         total_reward = 0.0
 
         while True:
-            features = env.state_features(state)
-            logits = actor_weights @ features
-            probs = softmax(logits)
+            probs = softmax(actor_preferences[state])
             action = int(rng.choice(env.num_actions, p=probs))
 
             result = env.step(action)
@@ -326,25 +311,19 @@ def train_actor_critic(
             reward = result.reward
             done = result.done
 
-            value = critic_weights @ features
-
-            if done:
-                next_value = 0.0
-            else:
-                next_features = env.state_features(next_state)
-                next_value = critic_weights @ next_features
+            value = critic_values[state]
+            next_value = 0.0 if done else critic_values[next_state]
 
             delta = reward + gamma * next_value - value
 
-            critic_weights += alpha_critic * delta * features
+            critic_values[state] += alpha_critic * delta
 
-            grad_log_policy = -probs[:, None] * features[None, :]
-            grad_log_policy[action] += features
+            grad_log_policy = -probs
+            grad_log_policy[action] += 1.0
 
-            actor_weights += alpha_actor * delta * grad_log_policy
+            actor_preferences[state] += alpha_actor * delta * grad_log_policy
 
             total_reward += reward
-            state = next_state
 
             if done:
                 episode_rewards[episode] = total_reward
@@ -352,10 +331,12 @@ def train_actor_critic(
                 reached_goal[episode] = result.info["reached_goal"]
                 break
 
+            state = next_state
+
     return {
-        "actor_weights": actor_weights,
-        "critic_weights": critic_weights,
-        "policy": actor_policy(actor_weights, env),
+        "actor_preferences": actor_preferences,
+        "critic_values": critic_values,
+        "policy": actor_policy(actor_preferences, env),
         "episode_rewards": episode_rewards,
         "episode_steps": episode_steps,
         "reached_goal": reached_goal,
