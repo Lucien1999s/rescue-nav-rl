@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environment
+.venv/
+venv/
+.env
+
+# Jupyter / OS / IDE
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+.idea/
+
+# Generated outputs
+results/*
+reports/*.pdf
+
+# Keep folders
+!results/.gitkeep
+!reports/.gitkeep
