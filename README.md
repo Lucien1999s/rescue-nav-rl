@@ -21,6 +21,16 @@ The system compares different reinforcement learning agents and recommends the b
 
 The goal is not just to visualize RL training, but to turn a gridworld task into a small decision-support simulator for risk-aware route planning.
 
+指揮官，把這段加在 demo 圖下面、`## Quick Start` 前面即可：
+
+## Live Demo
+
+The app is deployed on Streamlit Cloud and can be accessed here:
+
+[Open Rescue Route Intelligence](https://rescue-route-ai.streamlit.app/)
+
+Use the sidebar to configure a disaster scenario, then click `Deploy current mission` to train and evaluate the selected agents. The app will generate a recommended evacuation policy, display the learned route, and rank agents by mission performance.
+
 ## Quick Start
 
 Install dependencies:
